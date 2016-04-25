@@ -1,0 +1,69 @@
+# Ytelsestester og zabbix
+
+## Ytelsestester:
+
+* Krav om at systemet skal takle 30 000 turer/dag
+* Det blir totalt 11 mill turer/år
+* Dette må være testet og dokumentert
+
+* Vi har helautomatiserte ytelsestester fra ende til ende
+* Styrer hangfire fra utsiden, trigger jobber i riktig rekkefølge
+* Genererer testdata basert på reelle planlagte turer
+* Kjører kontroller og sender svar
+* Skrevet i F#
+* Bruker reelle integrasjonspunkter
+
+### Fordeler:
+
+* Stresstester alle integrasjonspunktene våre
+* Sjekker at vi ikke har svakheter i databasekode
+* Gir oss mulighet til å sjekke databasestørrelse over tid
+* Lett å dokumentere
+* Enkelt å kjøre på nytt ved store endringer
+
+### Ulemper:
+
+* Vi kan ikke garantere at vi får testet alle caser, bare de
+som dukker opp i testdata.
+* Vi er "positive" når vi genererer filer til test, genererer ikke avvik.
+
+## overskrift...
+
+* I påsken kjørte vi stresstester i 10 dager
+* Totalt 12 millioner turer fordelt på 10 dager
+* Nesten ingen feil
+* ...vis screenshot
+
+## Resultater
+
+* Vi har funnet _mange_ deadlocks og andre problemer med vår egen kode
+* Vi har funnet _mange_ problemer med integrasjonene
+* Vi har dokumentert at systemet vårt kan takle en last som er mye høyere enn kravet
+
+## Zabbix
+
+* Overvåkningssystem som brukes og driftes av NHN
+* Kan vise ytelsesdata og overvåkningsdata over tid (RAM-bruk etc.)
+* Vårt system overvåkes ved hjelp av windows performance counters,
+  og zabbix agentene (som kjører på applikasjonsnodene) leser
+  performancecounterene direkte slik at vi ikke må integrere oss direkte mot zabbix
+
+### Helsesjekker
+
+* Helsesjekker er f.eks om integrasjonspunkter er oppe, om databasen er oppe etc.
+* Vi har en rekke helsesjekker som rapporteres til zabbix
+  * SQL server
+  * HELFO
+  * Sonic
+* I tillegg har vi endel andre felter som rapporteres
+  * Antall turer vi har behandlet
+  * Antall turer vi har importert
+
+### Templates
+
+* Zabbix må konfigureres ved hjelp av et template slik at den vet hvilke
+  performancecountere den skal lytte til
+* Dette er en xml-fil
+* Vi har helautomatisert generering av triggere til zabbix
+* Bruker annotasjoner i C# (ZabbixTemplateAttribute)
+*
