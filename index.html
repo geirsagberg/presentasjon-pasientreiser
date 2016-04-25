@@ -38,7 +38,6 @@ class: agenda
 ## Overvåkning
 
 * Systemet skal kunne overvåkes vha. Zabbix
-* Det skal være mulig å spore kilden til feil
 
 ---
 
@@ -75,28 +74,97 @@ class: middle center
 
 ---
 
+# Ytelse i frontend
+
+* Bruker Gatling til å teste API-endepunktene våreview
+* Simulerer så mange samtidige brukere som vi vil
+* Automatisk generering av grafer og andre visualiseringer av ytelsen
+
+---
+
 class: cols three
 
 # Resultater
 
-.col[
-  .circle.red.centered[jforwalfewal fmewal efwa fewalkm ewalmf ewalm fewalm]
-]
+* Vi har funnet _mange_ deadlocks og andre problemer med vår egen kode
+* Vi har funnet _mange_ problemer med integrasjonene
+* Vi har dokumentert at systemet vårt kan takle en last som er mye høyere enn kravet
+* I påsken kjørte vi ytelsestester på over 5 år med testdata i løpet av 10
+dager uten nevneverdige feil.
 
-.col[
-  .circle.green.centered[Kolonne 2]
-]
+## Hva mangler?
 
-.col[
-  .circle.yellow.centered[Kolonne 3]
-]
+* Vi har enda ikke kjørt backendtester samtidig som frontendtester
 
 ---
 
-# Ytelse i frontend
+background-image: url(surveillance.jpg)
+class: middle center
 
-* Bruker gatling til å teste API-endepunktene våreview
-*
+# Overvåkning
+
+---
+
+# Zabbix
+
+* Overvåkningssystem som brukes og driftes av NHN
+* Kan vise ytelsesdata og overvåkningsdata over tid (RAM-bruk etc.)
+* Kan trigge alarmer som er konfigurerbare av oss
+
+---
+
+# Helsesjekker
+
+Er integrasjoner oppe? Hva er responstiden på forsiden?
+* Vi har en rekke helsesjekker som rapporteres til Zabbix
+* Avvik på disse helsesjekkene genererer en alarm i Zabbix.
+  * SQL server
+  * HELFO
+  * Sonic
+
+
+
+* I tillegg har vi endel andre felter som rapporteres
+  * Antall turer vi har behandlet
+  * Antall turer vi har importert
+  * ...
+
+---
+
+# Oppsett av Zabbix
+
+* XML fil definerer hvilke performancecountere Zabbix lytter til.
+* Automatisk generert basert på annoteringer i kildekoden.
+
+```c#
+[ZabbixTemplate("foo", "bar")]
+public int GetSonicStatus() {
+  // ...
+}
+```
+
+```xml
+<item>
+  <name>foo</name>
+  <type>0</type>
+  <multiplier>0</multiplier>
+  ...
+</item>
+```
+
+---
+
+class: cols two
+
+# Oppsummering
+
+.col[
+  ## Sett opp ytelsestester!
+]
+
+.col[
+  ## Overvåkning is king
+]
 
 ---
 
