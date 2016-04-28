@@ -1,3 +1,4 @@
+<!-- htmllint preset="$none" -->
 <!DOCTYPE html>
 <html>
   <head>
@@ -59,6 +60,131 @@ class: middle center
 
 ---
 
+# Testoppsett
+
+```f#
+
+"Start"
+  // Initialisering
+  ==> "ImporterAvtaler" // NISSY
+```
+
+---
+
+# Testoppsett
+
+```f#
+
+"Start"
+  // Initialisering
+  ==> "ImporterAvtaler" // NISSY
+  ==> "ImporterPlanlagteTurer" // NISSY
+```
+
+---
+
+# Testoppsett
+
+```f#
+
+"Start"
+  // Initialisering
+  ==> "ImporterAvtaler" // NISSY
+  ==> "ImporterPlanlagteTurer" // NISSY
+  ==> "SendInnFaktiskTur"
+  ==> "ImporterLagredeFiler"
+```
+
+---
+
+# Testoppsett
+
+```f#
+
+"Start"
+  // Initialisering
+  ==> "ImporterAvtaler" // NISSY
+  ==> "ImporterPlanlagteTurer" // NISSY
+  ==> "SendInnFaktiskTur"
+  ==> "ImporterLagredeFiler"
+  ==> "KjørRegelmotor"
+```
+
+---
+
+# Testoppsett
+
+```f#
+
+"Start"
+  // Initialisering
+  ==> "ImporterAvtaler" // NISSY
+  ==> "ImporterPlanlagteTurer" // NISSY
+  ==> "SendInnFaktiskTur"
+  ==> "ImporterLagredeFiler"
+  ==> "KjørRegelmotor"
+  ==> "Send8101Tilbakemelding" // SonicMQ
+```
+
+---
+
+# Testoppsett
+
+```f#
+
+"Start"
+  // Initialisering
+  ==> "ImporterAvtaler" // NISSY
+  ==> "ImporterPlanlagteTurer" // NISSY
+  ==> "SendInnFaktiskTur"
+  ==> "ImporterLagredeFiler"
+  ==> "KjørRegelmotor"
+  ==> "Send8101Tilbakemelding" // SonicMQ
+  ==> "GodkjennAlleTurerSomLiggerTilManuellBehandling"
+  ==> "Send8111Tilbakemelding" // SonicMQ
+```
+
+---
+
+# Testoppsett
+
+```f#
+
+"Start"
+  // Initialisering
+  ==> "ImporterAvtaler" // NISSY
+  ==> "ImporterPlanlagteTurer" // NISSY
+  ==> "SendInnFaktiskTur"
+  ==> "ImporterLagredeFiler"
+  ==> "KjørRegelmotor"
+  ==> "Send8101Tilbakemelding" // SonicMQ
+  ==> "GodkjennAlleTurerSomLiggerTilManuellBehandling"
+  ==> "Send8111Tilbakemelding" // SonicMQ
+  ==> "SendEgenandel" // HELFO
+```
+
+---
+
+# Testoppsett
+
+```f#
+
+"Start"
+  // Initialisering
+  ==> "ImporterAvtaler" // NISSY
+  ==> "ImporterPlanlagteTurer" // NISSY
+  ==> "SendInnFaktiskTur"
+  ==> "ImporterLagredeFiler"
+  ==> "KjørRegelmotor"
+  ==> "Send8101Tilbakemelding" // SonicMQ
+  ==> "GodkjennAlleTurerSomLiggerTilManuellBehandling"
+  ==> "Send8111Tilbakemelding" // SonicMQ
+  ==> "SendEgenandel" // HELFO
+  ==> "Send8199Oppgjør" // SonicMQ
+```
+
+---
+
 # Pros og cons
 
 ## Fordeler
@@ -92,9 +218,10 @@ class: cols three
 * I påsken kjørte vi ytelsestester på over 5 år med testdata i løpet av 10
 dager uten nevneverdige feil.
 
-## Hva mangler?
+## Hva gjenstår?
 
 * Vi har enda ikke kjørt backendtester samtidig som frontendtester
+* Reelle integrasjonspunkter istedenfor testdata.
 
 ---
 
@@ -133,19 +260,21 @@ Er integrasjoner oppe? Hva er responstiden på forsiden?
 
 # Oppsett av Zabbix
 
-* XML fil definerer hvilke performancecountere Zabbix lytter til.
-* Automatisk generert basert på annoteringer i kildekoden.
+* Vårt system rapporterer status via performance countere i Windows.
+* XML fil definerer hvilke performance countere Zabbix lytter til.
+* XML er automatisk generert basert på annoteringer i kildekoden.
 
 ```c#
-[ZabbixTemplate("foo", "bar")]
-public int GetSonicStatus() {
-  // ...
-}
+// C#
+[ZabbixTemplate(TurerBehandletCounterName)]
+public static FeatureToggledPerfCounterDecorator TurerBehandlet() =>
+  new FeatureToggledPerfCounterDecorator(TurerBehandletCounterName);
 ```
 
 ```xml
+<!-- XML -->
 <item>
-  <name>foo</name>
+  <name>Turer behandlet</name>
   <type>0</type>
   <multiplier>0</multiplier>
   ...
