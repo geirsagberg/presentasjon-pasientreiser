@@ -37,382 +37,352 @@ class: agenda
 
 # Agenda
 
-* Databasekrav
-* Problemer
-* Løsninger
+* Teknologivalg
+* Connections
+* Dapper
+* Avanserte queries
 
 ---
 
+# Teknologivalg
+
+## Faktorer
+
+* Ytelse
+* PostgreSQL?
+* Kompetanse
+
+---
+
+class: middle center
+
+# Connections
+
+---
+
+# Connections - Feil
+
 ```c#
-public static class QueryGenerator
+public class BadRepository
 {
-    public static string Select<T>(string tableName = null)
+    public void DoSqlStuff()
     {
-        return Select(new Node<T>(tableName));
-    }
-
-    //TODO: Support limit and paging.
-    public static string Select(Node node)
-    {
-        return $@"SELECT
-{GetMappingsForTree(node).ToJoinedString("," + Environment.NewLine)}
-FROM {GetFromJoinsForTree(node)}";
-    }
-
-    private static IEnumerable<string> GetMappingsForTree(Node node)
-    {
-        return node.Flatten().SelectMany(GetMappings);
-    }
-
-    private static string GetFromJoinsForTree(Node node)
-    {
-        return node.Flatten().Select(GetFromJoins).ToJoinedString(Environment.NewLine);
-    }
-
-    private static string GetFromJoins(Node node)
-    {
-        if (node.Parent != null)
+        using (var connection = new SqlConnection("<hardkodet>"))
         {
-            return $"LEFT JOIN {node.TableName} {node.Initials} ON {node.Parent.Initials}.Id = {node.Initials}.{node.Parent.TableName}Id";
+            connection.Open();
+            // Do SQL stuff...
         }
-        return $"{node.TableName} {node.Initials}";
-    }
-
-    private static IEnumerable<string> GetMappings(Node node)
-    {
-        var initials = node.Initials;
-        return node.Type.GetTableProperties().Select(prop => $"{initials}.[{prop.Name}] as {node.ParentPrefix}{prop.Name}");
-    }
-
-    private static IOrderedEnumerable<PropertyInfo> GetTableProperties(this Type dtoType)
-    {
-        return dtoType.GetProperties().Where(p => !p.HasAttribute<NotMappedAttribute>()).OrderBy(p => p.Name);
-    }
-
-    internal static string GetInitials(this string str)
-    {
-        return str.Where(char.IsUpper).ToJoinedString("").ToLowerInvariant();
-    }
-
-    public static string Insert<T>()
-    {
-        var table = typeof (T).GetTableName();
-        var names = typeof (T).GetTableProperties().Select(p => p.Name).ToList();
-        return Insert(table, names);
-    }
-
-    public static string Insert(string tableName, IEnumerable<string> columns)
-    {
-        var names = columns.ToList();
-        var n = Environment.NewLine;
-        var cols = names.Select(name => $"[{name}]").ToJoinedString("," + n);
-        var vals = names.Select(name => $"@{name}").ToJoinedString("," + n);
-        return $"INSERT INTO {tableName} ({n + cols + n}) VALUES ({n + vals + n})";
     }
 }
 ```
 
 ---
 
-# Databasekrav
-
-## 
-
-* Minimum 30 000 turer per dag (11 millioner turer per år)
-* Ytelsen skal ikke svekkes over tid
-* 50 samtidige brukere
-
-## Overvåkning
-
-* Systemet skal kunne overvåkes vha. Zabbix
-* BEKK skal tilby konfigurasjon for Zabbix
-
----
-
-background-image: url(MG_2859.jpg)
-class: middle center
-
-# Ytelse
-
----
-
-# Ytelse i backend
-
-* Helautomatiserte ytelsestester fra ende til ende
-* Styrer systemet fra utsiden, og utfører jobber i riktig rekkefølge
-* Bruker reelle integrasjonspunkter
-* Genererer testdata basert på reelle planlagte turer
-* Kjører kontroller og sender tilbakemeldinger
-* Skrevet i F#
-
----
-
-# Testoppsett
-
-```f#
-
-"Start"
-  // Initialisering
-  ==> "ImporterAvtaler" // NISSY
-```
-
-???
-
-En dag om gangen, kjører tester for 24 timer. Hvert steg triggrer en jobb i hangfire
-
----
-
-# Testoppsett
-
-```f#
-
-"Start"
-  // Initialisering
-  ==> "ImporterAvtaler" // NISSY
-  ==> "ImporterPlanlagteTurer" // NISSY
-```
-
----
-
-# Testoppsett
-
-```f#
-
-"Start"
-  // Initialisering
-  ==> "ImporterAvtaler" // NISSY
-  ==> "ImporterPlanlagteTurer" // NISSY
-  ==> "SendInnFaktiskTur" // SonicMQ
-  ==> "ImporterLagredeFiler"
-```
-
-???
-
-Genererer SUTI av faktiske turer basert på de planlagte turene som ble importert
-i forrige steg, sender de til vår innkø via Sonic
-
----
-
-# Testoppsett
-
-```f#
-
-"Start"
-  // Initialisering
-  ==> "ImporterAvtaler" // NISSY
-  ==> "ImporterPlanlagteTurer" // NISSY
-  ==> "SendInnFaktiskTur" // SonicMQ
-  ==> "ImporterLagredeFiler"
-  ==> "KjørRegelmotor"
-```
-
----
-
-# Testoppsett
-
-```f#
-
-"Start"
-  // Initialisering
-  ==> "ImporterAvtaler" // NISSY
-  ==> "ImporterPlanlagteTurer" // NISSY
-  ==> "SendInnFaktiskTur" // SonicMQ
-  ==> "ImporterLagredeFiler"
-  ==> "KjørRegelmotor"
-  ==> "Send8101Tilbakemelding" // SonicMQ
-```
-
----
-
-# Testoppsett
-
-```f#
-
-"Start"
-  // Initialisering
-  ==> "ImporterAvtaler" // NISSY
-  ==> "ImporterPlanlagteTurer" // NISSY
-  ==> "SendInnFaktiskTur" // SonicMQ
-  ==> "ImporterLagredeFiler"
-  ==> "KjørRegelmotor"
-  ==> "Send8101Tilbakemelding" // SonicMQ
-  ==> "GodkjennAlleTurerSomLiggerTilManuellBehandling"
-  ==> "Send8111Tilbakemelding" // SonicMQ
-```
-
----
-
-# Testoppsett
-
-```f#
-
-"Start"
-  // Initialisering
-  ==> "ImporterAvtaler" // NISSY
-  ==> "ImporterPlanlagteTurer" // NISSY
-  ==> "SendInnFaktiskTur" // SonicMQ
-  ==> "ImporterLagredeFiler"
-  ==> "KjørRegelmotor"
-  ==> "Send8101Tilbakemelding" // SonicMQ
-  ==> "GodkjennAlleTurerSomLiggerTilManuellBehandling"
-  ==> "Send8111Tilbakemelding" // SonicMQ
-  ==> "SendEgenandel" // HELFO
-```
-
----
-
-# Testoppsett
-
-```f#
-
-"Start"
-  // Initialisering
-  ==> "ImporterAvtaler" // NISSY
-  ==> "ImporterPlanlagteTurer" // NISSY
-  ==> "SendInnFaktiskTur" // SonicMQ
-  ==> "ImporterLagredeFiler"
-  ==> "KjørRegelmotor"
-  ==> "Send8101Tilbakemelding" // SonicMQ
-  ==> "GodkjennAlleTurerSomLiggerTilManuellBehandling"
-  ==> "Send8111Tilbakemelding" // SonicMQ
-  ==> "SendEgenandel" // HELFO
-  ==> "Send8199Oppgjør" // SonicMQ
-```
-
-???
-
-Gjenta stegene for den mengden dager man vil kjøre tester for. Har skrevet
-script for å gjøre dette.
-
----
-
-# Pros og cons
-
-## Fordeler
-
-* Får stresstestet integrasjonspunkter
-* Lett å sjekke om databasekoden vår har svakheter
-* Lett å sjekke ytelse over tid
-
-## Ulemper
-
-* Får ikke testet alle caser
-* Positiv tilnærming
-
----
-
-# Ytelse i frontend
-
-* Bruker Gatling til å teste API-endepunktene våre
-* Simulerer så mange samtidige brukere som vi vil
-* Automatisk generering av grafer og andre visualiseringer av ytelsen
-
----
-
-# Ytelse i frontend
-
-<div id="framewrap">
-  <iframe id="frame" width="100%" height="80%" src="ctrlapisimulation/index.html"></iframe>
-</div>
-
----
-
-class: cols three
-
-# Resultater
-
-* Vi har funnet _mange_ deadlocks og andre problemer med vår egen kode
-* Vi har funnet _mange_ problemer med integrasjonene
-* Vi har dokumentert at systemet vårt kan takle en last som er mye høyere enn kravet
-* I påsken kjørte vi ytelsestester på over 5 år med testdata i løpet av 10
-dager uten nevneverdige feil.
-
-## Hva gjenstår?
-
-* Vi har enda ikke kjørt backendtester samtidig som frontendtester
-* Testing i prodmiljø
-
----
-
-background-image: url(surveillance.jpg)
-class: middle center
-
-# Overvåkning
-
----
-
-# Zabbix
-
-* Overvåkningssystem som brukes og driftes av NHN
-* Kan vise ytelsesdata og overvåkningsdata over tid (RAM-bruk etc.)
-* Lar oss definere alarmer ved feil.
-
-???
-
-Vi skal konfigurere zabbix
-
----
-
-# Helsesjekker
-
-Er integrasjoner oppe? Hva er responstiden på forsiden?
-* Vi har en rekke helsesjekker som rapporteres til Zabbix
-* Avvik genererer en alarm i Zabbix.
-  * SQL server
-  * HELFO
-  * Sonic
-
-
-
-* Annen data som rapporteres
-  * Antall turer vi har behandlet
-  * Antall turer vi har importert
-  * osv...
-
----
-
-# Oppsett av Zabbix
-
-* Vårt system rapporterer status via performance countere i Windows.
-* XML fil definerer hvilke performance countere Zabbix lytter til.
-* XML er automatisk generert basert på annoteringer i kildekoden.
+# Connections - Riktig
 
 ```c#
-// C#
-[ZabbixTemplate(TurerBehandletCounterName)]
-public static FeatureToggledPerfCounterDecorator TurerBehandlet() =>
-  new FeatureToggledPerfCounterDecorator(TurerBehandletCounterName);
+public class GoodRepository
+{
+    private readonly IConnectionManager connectionManager;
+
+    public GoodRepository(IConnectionManager connectionManager)
+    {
+        this.connectionManager = connectionManager;
+    }
+
+    public void DoSqlStuff()
+    {
+        connectionManager.Execute(connection => {
+            // Do SQL stuff...
+        });
+    }
+}
 ```
-
-```xml
-<!-- XML -->
-<item>
-  <name>Turer behandlet</name>
-  <type>0</type>
-  <multiplier>0</multiplier>
-  ...
-</item>
-```
-
-???
-
-Hvordan får vi konfigurert dataene som Zabbix skal ha?
-Vårt system integrerer med windows performancecounters, zabbix-agent på
-nodene kan lese disse counterene. Zabbix-agentene må konfigureres vha XML.
-
-Selve XML-filene må manuelt importeres i Zabbix, vi har ikke klart å automatisere
-det steget.
 
 ---
 
-class: center middle bekk-top
+# Connections - Riktig
 
-# Demo
+```c#
+public interface IConnectionManager
+{
+    void Execute(Action<IDbConnection> action);
+    TResult Query<TResult>(Func<IDbConnection, TResult> func);
+}
+```
+
+---
+
+# Connections - Riktig
+
+```c#
+public class ConnectionManager : IConnectionManager
+{
+    private readonly IConnectionFactory connectionFactory;
+    public ConnectionManager(IConnectionFactory connectionFactory) {
+        this.connectionFactory = connectionFactory;
+    }
+    public void Execute(Action<IDbConnection> action) {
+        using (var connection = CreateConnection()) {
+            action(connection);
+        }
+    }
+    public TResult Query<TResult>(Func<IDbConnection, TResult> func) {
+        using (var connection = CreateConnection()) {
+            return func(connection);
+        }
+    }
+}
+```
+
+---
+
+# Connections - Riktig
+
+```c#
+public interface IConnectionFactory
+{
+    IDbConnection CreateConnection();
+}
+
+public class SqlConnectionFactory : IConnectionFactory
+{
+    private readonly string connectionString;
+    public SqlConnectionFactory(string connectionString) {
+        this.connectionString = connectionString;
+    }
+    public IDbConnection CreateConnection() {
+        IDbConnection connection = new SqlConnection(connectionString);
+        connection.Open();
+        return connection;
+    }
+}
+```
+
+---
+
+class: middle center
+
+# Dapper
+
+---
+
+# Dapper
+
+## SqlCommand
+
+```c#
+using (var command = connection.CreateCommand()) {
+    command.CommandText = "SELECT * FROM Users WHERE Name = 'Geir'";
+    var reader = command.ExecuteReader();
+    var user = new User {
+        Id = reader.GetString(0),
+        Name = reader.GetString(1)
+    };
+}
+```
+
+---
+
+# Dapper
+
+## SqlCommand
+
+```c#
+using (var command = connection.CreateCommand()) {
+    command.CommandText = "SELECT * FROM Users WHERE Name = 'Geir'";
+    var reader = command.ExecuteReader();
+    var user = new User {
+        Id = reader.GetString(0),
+        Name = reader.GetString(1)
+    };
+}
+```
+
+## Entity Framework
+
+```c#
+var users = Context.Users.Where(u => u.Name == "Geir");
+```
+
+---
+
+# Dapper
+
+## SqlCommand
+
+```c#
+using (var command = connection.CreateCommand()) {
+    command.CommandText = "SELECT * FROM Users WHERE Name = 'Geir'";
+    var reader = command.ExecuteReader();
+    var user = new User {
+        Id = reader.GetString(0),
+        Name = reader.GetString(1)
+    };
+}
+```
+
+## Entity Framework
+
+```c#
+var users = Context.Users.Where(u => u.Name == "Geir");
+```
+
+## Dapper
+
+```c#
+connection.Query<User>("SELECT * FROM Users WHERE Name = @name", new {name = "Geir"});
+```
+
+---
+
+# Dapper Extensions
+
+## Get og Update
+```c#
+var user = connection.Get<User>(1);
+user.Name = "Geir";
+connection.Update(user);
+```
+
+---
+
+# Dapper Extensions
+
+## Get og Update
+```c#
+var user = connection.Get<User>(1);
+user.Name = "Geir";
+connection.Update(user);
+```
+
+## Insert
+```c#
+var newUser = new User {
+    Name = "Jonas"
+};
+connection.Insert(newUser);
+```
+
+---
+
+# Dapper Extensions
+
+## Get og Update
+```c#
+var user = connection.Get<User>(1);
+user.Name = "Geir";
+connection.Update(user);
+```
+
+## Insert
+```c#
+var newUser = new User {
+    Name = "Jonas"
+};
+connection.Insert(newUser);
+```
+
+## Delete med predikat
+```c#
+connection.Delete<User>(Predicates.Field<User>(u => u.Name, Operator.Eq, "Geir"));
+```
+
+---
+
+class: center middle
+
+# Avanserte queries
+
+---
+
+# Avanserte queries
+
+## Entity Framework
+
+Lazy loading:
+
+```c#
+var tur = Context.Tur.Single(t => t.TurNr = "123");
+var rekvisisjonHendelser = tur.Rekvisisjoner.SelectMany(r => r.Hendelser);
+```
+
+Eager loading:
+
+```c#
+var tur = Context.Tur
+  .Include(t => t.Rekvisisjoner.Select(r => r.Hendelser))
+  .Single(t => t.TurNr = "123")
+var rekvisisjonHendelser = tur.Rekvisisjoner.SelectMany(r => r.Hendelser);
+```
+
+---
+
+# Avanserte queries
+
+## Dapper
+
+```c#
+var tur = connection.Query<Tur>("SELECT * FROM Tur WHERE TurNr = @turNr", 
+    new {turNr = "123"}).Single();
+  
+tur.Rekvisisjoner = 
+    connection.Query<Rekvisisjon>("SELECT * FROM Rekvisisjon WHERE tur.Id = @turId", 
+    new {turId = tur.Id});
+  
+foreach (var rekvisisjon in tur.Rekvisisjoner) {
+    rekvisisjon.Hendelser = connection.Query<Hendelse>(
+        "SELECT * FROM Hendelse WHERE RekvisisjonId = @rekvisisjonId",
+        new {rekvisisjonId = rekvisisjon.Id});
+}
+```
+
+---
+
+# Avanserte queries
+
+## QueryGenerator og Slapper AutoMapper
+
+```c#
+var node = Node.OfType<Tur>
+  .WithChildNode<Rekvisisjon>(t => t.Rekvisisjoner, r => r
+    .WithChildNode<Hendelse>(r2 => r2.Hendelser));
+
+var selectQuery = QueryGenerator.Select(node);
+
+var result = connection.Query(selectQuery + " WHERE TurNr = @turNr", new {turNr = "123"});
+
+var tur = AutoMapper.MapDynamic<Tur>(result).Single();
+```
+
+---
+
+# QueryGenerator
+
+```c#
+var node = Node.OfType<Tur>
+  .WithChildNode<Rekvisisjon>(t => t.Rekvisisjoner, r => r
+    .WithChildNode<Hendelse>(r2 => r2.Hendelser));
+      
+var selectQuery = QueryGenerator.Select(node);
+
+selectQuery.Should().Be(@"SELECT
+  t.[Id] as Id,
+  t.[SjåførNavn] as SjåførNavn,
+  t.[TurNr] as TurNr
+  r.[Id] as Rekvisisjoner_Id,
+  r.[TurId] as Rekvisisjoner_TurId,
+  h.[Id] as Rekvisisjoner_Hendelser_Id,
+  h.[RekvisisjonId] as Rekvisisjoner_Hendelser_RekvisisjonId,
+  h.[Timestamp] as Rekvisisjoner_Hendelser_Timestamp 
+"); 
+
+```
 
 ---
 
 background-image: url(questions.jpg)
-class: center middle bekk-top
+class: center middle
 
 # Spørsmål?
 
@@ -422,7 +392,7 @@ class: center middle bekk-top
 
 # Takk
 
-Dag Stuan
+Geir Sagberg
 
 </textarea>
     <script src="node_modules/remark-bekk/vendor/remark.min.js" type="text/javascript"></script>
