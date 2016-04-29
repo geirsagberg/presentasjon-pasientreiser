@@ -41,9 +41,80 @@ class: agenda
 
 ---
 
+```c#
+public static class QueryGenerator
+    {
+        public static string Select<T>(string tableName = null)
+        {
+            return Select(new Node<T>(tableName));
+        }
+
+        //TODO: Support limit and paging.
+        public static string Select(Node node)
+        {
+            return $@"SELECT
+{GetMappingsForTree(node).ToJoinedString("," + Environment.NewLine)}
+FROM {GetFromJoinsForTree(node)}";
+        }
+
+        private static IEnumerable<string> GetMappingsForTree(Node node)
+        {
+            return node.Flatten().SelectMany(GetMappings);
+        }
+
+        private static string GetFromJoinsForTree(Node node)
+        {
+            return node.Flatten().Select(GetFromJoins).ToJoinedString(Environment.NewLine);
+        }
+
+        private static string GetFromJoins(Node node)
+        {
+            if (node.Parent != null)
+            {
+                return $"LEFT JOIN {node.TableName} {node.Initials} ON {node.Parent.Initials}.Id = {node.Initials}.{node.Parent.TableName}Id";
+            }
+            return $"{node.TableName} {node.Initials}";
+        }
+
+        private static IEnumerable<string> GetMappings(Node node)
+        {
+            var initials = node.Initials;
+            return node.Type.GetTableProperties().Select(prop => $"{initials}.[{prop.Name}] as {node.ParentPrefix}{prop.Name}");
+        }
+
+        private static IOrderedEnumerable<PropertyInfo> GetTableProperties(this Type dtoType)
+        {
+            return dtoType.GetProperties().Where(p => !p.HasAttribute<NotMappedAttribute>()).OrderBy(p => p.Name);
+        }
+
+        internal static string GetInitials(this string str)
+        {
+            return str.Where(char.IsUpper).ToJoinedString("").ToLowerInvariant();
+        }
+
+        public static string Insert<T>()
+        {
+            var table = typeof (T).GetTableName();
+            var names = typeof (T).GetTableProperties().Select(p => p.Name).ToList();
+            return Insert(table, names);
+        }
+
+        public static string Insert(string tableName, IEnumerable<string> columns)
+        {
+            var names = columns.ToList();
+            var n = Environment.NewLine;
+            var cols = names.Select(name => $"[{name}]").ToJoinedString("," + n);
+            var vals = names.Select(name => $"@{name}").ToJoinedString("," + n);
+            return $"INSERT INTO {tableName} ({n + cols + n}) VALUES ({n + vals + n})";
+        }
+    }
+```
+
+---
+
 # Databasekrav
 
-## Lol
+## 
 
 * Minimum 30 000 turer per dag (11 millioner turer per år)
 * Ytelsen skal ikke svekkes over tid
